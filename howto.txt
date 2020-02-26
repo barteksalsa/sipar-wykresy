@@ -1,0 +1,8 @@
+1. pobieram python 3.8.1
+2. instaluje pythona przez "customize installation":
+ * Install for all users
+ * Add Python to environment variables
+3. Wiersz polecenia jako admin
+ * pip3 install plotly==4.5.1
+ * pip3 install pandas
+ 
