@@ -3,10 +3,13 @@ import plotly.graph_objects as go
 import argparse
 import re
 import sys
+import os
 import numpy as np
+import pandas
 
 parser = argparse.ArgumentParser(description='Plots data from Aktyn and Pirania and Sipar')
 parser.add_argument('fileName', metavar='F', nargs=1, help='Filename of PIR data')
+parser.add_argument('--dev', help='aktyn or sipar', required=True)
 
 
 def parseFile(fileName):
@@ -53,7 +56,10 @@ def parseFile(fileName):
     numbersTxt = numbers.split(dataLine)
     values = list(map(float, numbersTxt))
     array.append(values)
+  
+  # convert to Pandas dataframe for display
   array = np.array(array)
+  array = pandas.DataFrame(data=array, columns=columnDescriptors)
   return array
   
 
@@ -62,15 +68,54 @@ def main():
   args = parser.parse_args()
   fileName = args.fileName[0]
   array = parseFile(fileName)
-  #df = px.data.gapminder().query("country=='Canada'")
-  #print(type(df))
-  #fig = px.line(df, x="year", y="lifeExp", title='Life expectancy in Canada')
   
-  x = array[:,0].tolist()
+  # excluded list contains columns to skip when displaying
+  excludedList = ['1 - time [h]']
+  if args.dev == "sipar":
+    [excludedList.append(x) for x in ['6 - latitude +/N -/S', 
+                                      '7 - longitude +/E -/W']]
+  elif args.dev == "aktyn":
+    [excludedList.append(x) for x in ['6 - latitude +/N -/S', 
+                                      '7 - longitude +/E -/W',
+                                      '11 - temperature Water (deg. C)',
+                                      '12 - Raw Pyranometer Upper (V)',
+                                      '13 - Raw Pyranometer IR Upper (V)',
+                                      '14 - Raw Pyranometer IR Lower (V)',
+                                      '15 - Raw Pyranometer Lower (V)',
+                                      '16 - Raw Thermometer Pyranometer IR Upper (V)',
+                                      '17 - Raw Thermometer Pyranometer IR Lower (V)',
+                                      '18 - Raw Thermometer Air (V)',
+                                      '19 - Raw Thermometer Water (V)']]
+  else:
+    print("Error! Unknown device")
+    sys.exit(-1)
   
-  fig = go.Figure(data=[go.Scattergl(x=x, y=x)], layout=go.Layout(title=go.layout.Title(text="A Bar Chart")))
-  fig.show()
+  # hours are repeated for all columns
+  hours = array['1 - time [h]'].to_numpy()
+  
+  # construct a Figure with lines + markers
+  fig = go.Figure()
+  
+  for col in array.columns:
+    if col in excludedList:
+      continue
+    fig.add_trace(go.Scatter(x=hours, y=array[col].to_numpy(),
+                      mode='lines+markers',
+                      name=col))
+    
+  latTable = array['6 - latitude +/N -/S'].to_numpy()
+  y = latTable.item(int(latTable.size/2))
+  lonTable = array['7 - longitude +/E -/W'].to_numpy()
+  x = lonTable.item(int(lonTable.size/2))
+  fig.update_layout(
+        title = 'File: {} ({},lat:{},lon:{})'.format(os.path.basename(args.fileName[0]),args.dev,y,x),
+        xaxis = dict(range=[0,24])
+        )
+  fig.update_xaxes(nticks=24)
 
+  fig.show()  
+  # now we are done
+  sys.exit(0)
 
 
 
