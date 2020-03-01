@@ -9,7 +9,7 @@ import pandas
 
 parser = argparse.ArgumentParser(description='Plots data from Aktyn and Pirania and Sipar')
 parser.add_argument('fileName', metavar='F', nargs=1, help='Filename of PIR data')
-parser.add_argument('--dev', help='aktyn or sipar', required=True)
+parser.add_argument('--dev', help='aktyn or sipar', required=False)
 
 
 def parseFile(fileName):
@@ -71,10 +71,18 @@ def main():
   
   # excluded list contains columns to skip when displaying
   excludedList = ['1 - time [h]']
-  if args.dev == "sipar":
+  if args.dev == None:
+    if len(array.columns) > 10:
+      toExclude = "aktyn"
+    else:
+      toExclude = "sipar"
+  else:
+    toExclude = args.dev
+    
+  if toExclude == "sipar":
     [excludedList.append(x) for x in ['6 - latitude +/N -/S', 
                                       '7 - longitude +/E -/W']]
-  elif args.dev == "aktyn":
+  elif toExclude == "aktyn":
     [excludedList.append(x) for x in ['6 - latitude +/N -/S', 
                                       '7 - longitude +/E -/W',
                                       '11 - temperature Water (deg. C)',
@@ -100,7 +108,7 @@ def main():
     if col in excludedList:
       continue
     fig.add_trace(go.Scatter(x=hours, y=array[col].to_numpy(),
-                      mode='lines+markers',
+                      mode='lines',
                       name=col))
     
   latTable = array['6 - latitude +/N -/S'].to_numpy()
@@ -108,8 +116,8 @@ def main():
   lonTable = array['7 - longitude +/E -/W'].to_numpy()
   x = lonTable.item(int(lonTable.size/2))
   fig.update_layout(
-        title = 'File: {} ({},lat:{},lon:{})'.format(os.path.basename(args.fileName[0]),args.dev,y,x),
-        xaxis = dict(range=[0,24])
+        title = 'File: {} ({},lat:{},lon:{})'.format(os.path.basename(args.fileName[0]),toExclude,y,x),
+        xaxis = dict(range=[0,24]),
         )
   fig.update_xaxes(nticks=24)
 
